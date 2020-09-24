@@ -103,86 +103,41 @@ static void KaldiLogHandler(const LogMessageEnvelope &env, const char *message)
 }
 #endif
 
-Model::Model(const char *model_path) : model_path_str_(model_path) {
+Model::Model(const char *acmodel_path, const char *langmodel_path, const char *config_file_path) : acmodel_path_str_(acmodel_path), langmodel_path_str_(langmodel_path), config_file_path_str_(config_file_path) {
 
     SetLogHandler(KaldiLogHandler);
-
-    struct stat buffer;
-    string am_path = model_path_str_ + "/am/final.mdl";
-    if (stat(am_path.c_str(), &buffer) == 0) {
-         ConfigureV2();
-    } else {
-         ConfigureV1();
-    }
-
+    Configure();
     ReadDataFiles();
 
     ref_cnt_ = 1;
 }
 
-// Old model layout without model configuration file
-
-void Model::ConfigureV1()
+void Model::Configure()
 {
-    const char *extra_args[] = {
-        "--max-active=7000",
-        "--beam=13.0",
-        "--lattice-beam=6.0",
-        "--acoustic-scale=1.0",
+    struct stat buffer;
 
-        "--frame-subsampling-factor=3",
-
-        "--endpoint.silence-phones=1:2:3:4:5:6:7:8:9:10",
-        "--endpoint.rule2.min-trailing-silence=0.5",
-        "--endpoint.rule3.min-trailing-silence=1.0",
-        "--endpoint.rule4.min-trailing-silence=2.0",
-
-        "--print-args=false",
-    };
-
-    kaldi::ParseOptions po("");
-    nnet3_decoding_config_.Register(&po);
-    endpoint_config_.Register(&po);
-    decodable_opts_.Register(&po);
-
-    vector<const char*> args;
-    args.push_back("vosk");
-    args.insert(args.end(), extra_args, extra_args + sizeof(extra_args) / sizeof(extra_args[0]));
-    po.Read(args.size(), args.data());
-
-    nnet3_rxfilename_ = model_path_str_ + "/final.mdl";
-    hclg_fst_rxfilename_ = model_path_str_ + "/HCLG.fst";
-    hcl_fst_rxfilename_ = model_path_str_ + "/HCLr.fst";
-    g_fst_rxfilename_ = model_path_str_ + "/Gr.fst";
-    disambig_rxfilename_ = model_path_str_ + "/disambig_tid.int";
-    word_syms_rxfilename_ = model_path_str_ + "/words.txt";
-    winfo_rxfilename_ = model_path_str_ + "/word_boundary.int";
-    carpa_rxfilename_ = model_path_str_ + "/rescore/G.carpa";
-    std_fst_rxfilename_ = model_path_str_ + "/rescore/G.fst";
-    final_ie_rxfilename_ = model_path_str_ + "/ivector/final.ie";
-    mfcc_conf_rxfilename_ = model_path_str_ + "/mfcc.conf";
-}
-
-void Model::ConfigureV2()
-{
     kaldi::ParseOptions po("something");
     nnet3_decoding_config_.Register(&po);
     endpoint_config_.Register(&po);
     decodable_opts_.Register(&po);
-    po.ReadConfigFile(model_path_str_ + "/conf/model.conf");
+    feature_config_.Register(&po);
+
+    if (stat(config_file_path_str_.c_str(), &buffer) == 0){
+      KALDI_LOG << "Loading decode config file from " << config_file_path_str_;
+      po.ReadConfigFile(config_file_path_str_);
+    } else {
+      po.ReadConfigFile(acmodel_path_str_ + "/conf/online.conf"); }
 
 
-    nnet3_rxfilename_ = model_path_str_ + "/am/final.mdl";
-    hclg_fst_rxfilename_ = model_path_str_ + "/graph/HCLG.fst";
-    hcl_fst_rxfilename_ = model_path_str_ + "/graph/HCLr.fst";
-    g_fst_rxfilename_ = model_path_str_ + "/graph/Gr.fst";
-    disambig_rxfilename_ = model_path_str_ + "/graph/disambig_tid.int";
-    word_syms_rxfilename_ = model_path_str_ + "/graph/words.txt";
-    winfo_rxfilename_ = model_path_str_ + "/graph/phones/word_boundary.int";
-    carpa_rxfilename_ = model_path_str_ + "/rescore/G.carpa";
-    std_fst_rxfilename_ = model_path_str_ + "/rescore/G.fst";
-    final_ie_rxfilename_ = model_path_str_ + "/ivector/final.ie";
-    mfcc_conf_rxfilename_ = model_path_str_ + "/conf/mfcc.conf";
+    nnet3_rxfilename_ = acmodel_path_str_ + "/final.mdl";
+    hclg_fst_rxfilename_ = langmodel_path_str_ + "/HCLG.fst";
+    hcl_fst_rxfilename_ = langmodel_path_str_ + "/HCLr.fst";
+    g_fst_rxfilename_ = langmodel_path_str_ + "/Gr.fst";
+    disambig_rxfilename_ = langmodel_path_str_ + "/disambig_tid.int";
+    word_syms_rxfilename_ = langmodel_path_str_ + "/words.txt";
+    winfo_rxfilename_ = langmodel_path_str_ + "/word_boundary.int";
+    carpa_rxfilename_ = langmodel_path_str_ + "/rescore/G.carpa";
+    std_fst_rxfilename_ = langmodel_path_str_ + "/rescore/G.fst";
 }
 
 void Model::ReadDataFiles()
@@ -194,13 +149,34 @@ void Model::ReadDataFiles()
          " lattice-beam=" << nnet3_decoding_config_.lattice_beam;
     KALDI_LOG << "Silence phones " << endpoint_config_.silence_phones;
 
-    feature_info_.feature_type = "mfcc";
-    ReadConfigFromFile(mfcc_conf_rxfilename_, &feature_info_.mfcc_opts);
-    feature_info_.mfcc_opts.frame_opts.allow_downsample = true; // It is safe to downsample
+    KALDI_LOG << "feature type " << feature_config_.feature_type;
+    if (feature_config_.feature_type == "mfcc") {
+      ReadConfigFromFile(feature_config_.mfcc_config, &feature_info_.mfcc_opts);
+      feature_info_.mfcc_opts.frame_opts.allow_downsample = true; // It is safe to downsample
+    } else if (feature_config_.feature_type == "plp") {
+      ReadConfigFromFile(feature_config_.plp_config, &feature_info_.plp_opts);
+      feature_info_.plp_opts.frame_opts.allow_downsample = true; // It is safe to downsample
+    } else if (feature_config_.feature_type == "fbank") {
+      ReadConfigFromFile(feature_config_.fbank_config, &feature_info_.fbank_opts);
+      feature_info_.fbank_opts.frame_opts.allow_downsample = true; // It is safe to downsample
+    } else {
+      KALDI_ERR << "Code error: invalid feature type " << feature_config_.feature_type;
+    }
+
+    if (feature_config_.ivector_extraction_config != "") {
+      feature_info_.use_ivectors = true;
+      OnlineIvectorExtractionConfig ivector_extraction_opts;
+      ReadConfigFromFile(feature_config_.ivector_extraction_config,
+                        &ivector_extraction_opts);
+      feature_info_.ivector_extractor_info.Init(ivector_extraction_opts);
+    } else {
+      feature_info_.use_ivectors = false;
+    }
 
     feature_info_.silence_weighting_config.silence_weight = 1e-3;
     feature_info_.silence_weighting_config.silence_phones_str = endpoint_config_.silence_phones;
 
+    KALDI_LOG << "Am model file "<< nnet3_rxfilename_;
     trans_model_ = new kaldi::TransitionModel();
     nnet_ = new kaldi::nnet3::AmNnetSimple();
     {
@@ -215,21 +191,6 @@ void Model::ReadDataFiles()
     decodable_info_ = new nnet3::DecodableNnetSimpleLoopedInfo(decodable_opts_,
                                                                nnet_);
 
-    if (stat(final_ie_rxfilename_.c_str(), &buffer) == 0) {
-        KALDI_LOG << "Loading i-vector extractor from " << final_ie_rxfilename_;
-
-        OnlineIvectorExtractionConfig ivector_extraction_opts;
-        ivector_extraction_opts.splice_config_rxfilename = model_path_str_ + "/ivector/splice.conf";
-        ivector_extraction_opts.cmvn_config_rxfilename = model_path_str_ + "/ivector/online_cmvn.conf";
-        ivector_extraction_opts.lda_mat_rxfilename = model_path_str_ + "/ivector/final.mat";
-        ivector_extraction_opts.global_cmvn_stats_rxfilename = model_path_str_ + "/ivector/global_cmvn.stats";
-        ivector_extraction_opts.diag_ubm_rxfilename = model_path_str_ + "/ivector/final.dubm";
-        ivector_extraction_opts.ivector_extractor_rxfilename = model_path_str_ + "/ivector/final.ie";
-        feature_info_.use_ivectors = true;
-        feature_info_.ivector_extractor_info.Init(ivector_extraction_opts);
-    } else {
-        feature_info_.use_ivectors = false;
-    }
 
     if (stat(hclg_fst_rxfilename_.c_str(), &buffer) == 0) {
         KALDI_LOG << "Loading HCLG from " << hclg_fst_rxfilename_;
@@ -278,6 +239,13 @@ void Model::ReadDataFiles()
     } else {
         std_lm_fst_ = NULL;
     }
+
+    sample_frequence_ = feature_info_.mfcc_opts.frame_opts.samp_freq;
+}
+
+int Model::getSampleFreq()
+{
+  return sample_frequence_;
 }
 
 void Model::Ref() 

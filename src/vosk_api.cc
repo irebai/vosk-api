@@ -21,9 +21,14 @@
 
 using namespace kaldi;
 
-VoskModel *vosk_model_new(const char *model_path)
+VoskModel *vosk_model_new(const char *acmodel_path, const char *langmodel_path, const char *config_file_path)
 {
-    return (VoskModel *)new Model(model_path);
+    return (VoskModel *)new Model(acmodel_path, langmodel_path, config_file_path);
+}
+
+int vosk_get_sample_frequency(VoskModel *model)
+{
+    return ((Model *)model)->getSampleFreq();
 }
 
 void vosk_model_free(VoskModel *model)
@@ -41,9 +46,9 @@ void vosk_spk_model_free(VoskSpkModel *model)
     ((SpkModel *)model)->Unref();
 }
 
-VoskRecognizer *vosk_recognizer_new(VoskModel *model, float sample_rate)
+VoskRecognizer *vosk_recognizer_new(VoskModel *model, float sample_rate, bool is_metadata)
 {
-    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, sample_rate);
+    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, sample_rate, is_metadata);
 }
 
 VoskRecognizer *vosk_recognizer_new_spk(VoskModel *model, VoskSpkModel *spk_model, float sample_rate)
@@ -84,6 +89,11 @@ const char *vosk_recognizer_partial_result(VoskRecognizer *recognizer)
 const char *vosk_recognizer_final_result(VoskRecognizer *recognizer)
 {
     return ((KaldiRecognizer *)recognizer)->FinalResult();
+}
+
+const char *vosk_recognizer_get_metadata(VoskRecognizer *recognizer)
+{
+    return ((KaldiRecognizer *)recognizer)->GetMetadata();
 }
 
 void vosk_recognizer_free(VoskRecognizer *recognizer)

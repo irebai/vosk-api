@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VOSK_SPK_MODEL_H
-#define VOSK_SPK_MODEL_H
+#ifndef SPK_MODEL_H_
+#define SPK_MODEL_H_
 
 #include "base/kaldi-common.h"
 #include "online2/online-feature-pipeline.h"
@@ -35,12 +35,9 @@ protected:
     ~SpkModel() {};
 
     kaldi::nnet3::Nnet speaker_nnet;
-    kaldi::Vector<BaseFloat> mean;
-    kaldi::Matrix<BaseFloat> transform;
-
     MfccOptions spkvector_mfcc_opts;
 
     int ref_cnt_;
 };
 
-#endif /* VOSK_SPK_MODEL_H */
+#endif /* SPK_MODEL_H_ */

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VOSK_MODEL_H
-#define VOSK_MODEL_H
+#ifndef MODEL_H_
+#define MODEL_H_
 
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
@@ -39,19 +39,21 @@ class KaldiRecognizer;
 class Model {
 
 public:
-    Model(const char *model_path);
+    Model(const char *acmodel_path, const char *langmodel_path, const char *config_file_path);
     void Ref();
     void Unref();
+    int getSampleFreq();
 
 protected:
     ~Model();
-    void ConfigureV1();
-    void ConfigureV2();
+    void Configure();
     void ReadDataFiles();
 
     friend class KaldiRecognizer;
 
-    string model_path_str_;
+    string acmodel_path_str_;
+    string langmodel_path_str_;
+    string config_file_path_str_;
     string nnet3_rxfilename_;
     string hclg_fst_rxfilename_;
     string hcl_fst_rxfilename_;
@@ -68,6 +70,7 @@ protected:
     kaldi::LatticeFasterDecoderConfig nnet3_decoding_config_;
     kaldi::nnet3::NnetSimpleLoopedComputationOptions decodable_opts_;
     kaldi::OnlineNnet2FeaturePipelineInfo feature_info_;
+    kaldi::OnlineNnet2FeaturePipelineConfig feature_config_;
 
     kaldi::nnet3::DecodableNnetSimpleLoopedInfo *decodable_info_;
     kaldi::TransitionModel *trans_model_;
@@ -84,6 +87,7 @@ protected:
     kaldi::ConstArpaLm const_arpa_;
 
     int ref_cnt_;
+    int sample_frequence_;
 };
 
-#endif /* VOSK_MODEL_H */
+#endif /* MODEL_H_ */

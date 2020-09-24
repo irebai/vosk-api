@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VOSK_KALDI_RECOGNIZER_H
-#define VOSK_KALDI_RECOGNIZER_H
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -26,6 +24,7 @@
 #include "nnet3/am-nnet-simple.h"
 #include "nnet3/nnet-am-decodable-simple.h"
 #include "nnet3/nnet-utils.h"
+#include "json.h"
 
 #include "model.h"
 #include "spk_model.h"
@@ -41,7 +40,7 @@ enum KaldiRecognizerState {
 
 class KaldiRecognizer {
     public:
-        KaldiRecognizer(Model *model, float sample_frequency);
+        KaldiRecognizer(Model *model, float sample_frequency, bool is_metadata);
         KaldiRecognizer(Model *model, SpkModel *spk_model, float sample_frequency);
         KaldiRecognizer(Model *model, float sample_frequency, char const *grammar);
         ~KaldiRecognizer();
@@ -51,6 +50,8 @@ class KaldiRecognizer {
         const char* Result();
         const char* FinalResult();
         const char* PartialResult();
+        const char* GetMetadata();
+
 
     private:
         void InitState();
@@ -58,9 +59,12 @@ class KaldiRecognizer {
         void CleanUp();
         void UpdateSilenceWeights();
         bool AcceptWaveform(Vector<BaseFloat> &wdata);
-        bool GetSpkVector(Vector<BaseFloat> &out_xvector, int *frames);
+        bool GetSpkVector(Vector<BaseFloat> &xvector);
         const char *GetResult();
         const char *StoreReturn(const string &res);
+        void Decode();
+        void ComputeTimestamp(kaldi::CompactLattice clat);
+        void getFeatureFrames();
 
         Model *model_;
         SingleUtteranceNnet3Decoder *decoder_;
@@ -82,6 +86,12 @@ class KaldiRecognizer {
 
         KaldiRecognizerState state_;
         string last_result_;
+        /** Metadata:
+            - frame features
+            - frame silence weights
+            - detected segment position
+        */
+        bool is_metadata_;
+        json::JSON metadata_;
+        json::JSON silence_pos;
 };
-
-#endif /* VOSK_KALDI_RECOGNIZER_H */

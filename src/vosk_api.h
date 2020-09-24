@@ -14,12 +14,14 @@
 
 /* This header contains the C API for Vosk speech recognition system */
 
-#ifndef VOSK_API_H
-#define VOSK_API_H
+#ifndef _VOSK_API_H_
+#define _VOSK_API_H_
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /** Model stores all the data required for recognition
  *  it contains static data and can be shared across processing
@@ -44,7 +46,13 @@ typedef struct VoskRecognizer VoskRecognizer;
  *
  * @param model_path: the path of the model on the filesystem
  @ @returns model object */
-VoskModel *vosk_model_new(const char *model_path);
+VoskModel *vosk_model_new(const char *acmodel_path, const char *langmodel_path, const char *config_file_path);
+
+
+/** return the sample frequence defined in the config file
+ * @param model_path: the path of the model on the filesystem
+ @ @return sample_frequency_ variable */
+int vosk_get_sample_frequency(VoskModel *model);
 
 
 /** Releases the model memory
@@ -74,7 +82,7 @@ void vosk_spk_model_free(VoskSpkModel *model);
  *  The recognizers process the speech and return text using shared model data 
  *  @param sample_rate The sample rate of the audio you going to feed into the recognizer
  *  @returns recognizer object */
-VoskRecognizer *vosk_recognizer_new(VoskModel *model, float sample_rate);
+VoskRecognizer *vosk_recognizer_new(VoskModel *model, float sample_rate, bool is_metadata);
 
 
 /** Creates the recognizer object with speaker recognition
@@ -189,10 +197,14 @@ const char *vosk_recognizer_partial_result(VoskRecognizer *recognizer);
 const char *vosk_recognizer_final_result(VoskRecognizer *recognizer);
 
 
+const char *vosk_recognizer_get_metadata(VoskRecognizer *recognizer);
+
+
 /** Releases recognizer object
  *
  *  Underlying model is also unreferenced and if needed released */
 void vosk_recognizer_free(VoskRecognizer *recognizer);
+
 
 /** Set log level for Kaldi messages
  *
@@ -207,4 +219,4 @@ void vosk_set_log_level(int log_level);
 }
 #endif
 
-#endif /* VOSK_API_H */
+#endif /* _VOSK_API_H_ */

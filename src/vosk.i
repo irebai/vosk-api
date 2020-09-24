@@ -69,8 +69,11 @@ typedef struct {} SpkModel;
 typedef struct {} KaldiRecognizer;
 
 %extend Model {
-    Model(const char *model_path)  {
-        return vosk_model_new(model_path);
+    Model(const char *acmodel_path, const char *langmodel_path, const char *config_file_path)  {
+        return vosk_model_new(acmodel_path, langmodel_path, config_file_path);
+    }
+    int GetSampleFrequecy(){
+        return vosk_get_sample_frequency($self);
     }
     ~Model() {
         vosk_model_free($self);
@@ -87,8 +90,8 @@ typedef struct {} KaldiRecognizer;
 }
 
 %extend KaldiRecognizer {
-    KaldiRecognizer(Model *model, float sample_rate)  {
-        return vosk_recognizer_new(model, sample_rate);
+    KaldiRecognizer(Model *model, float sample_rate, bool is_metadata)  {
+        return vosk_recognizer_new(model, sample_rate, is_metadata);
     }
     KaldiRecognizer(Model *model, SpkModel *spk_model, float sample_rate)  {
         return vosk_recognizer_new_spk(model, spk_model, sample_rate);
@@ -126,6 +129,7 @@ typedef struct {} KaldiRecognizer;
     }
 #endif
 
+
     const char* Result() {
         return vosk_recognizer_result($self);
     }
@@ -134,6 +138,9 @@ typedef struct {} KaldiRecognizer;
     }
     const char* FinalResult() {
         return vosk_recognizer_final_result($self);
+    }
+    const char* GetMetadata() {
+        return vosk_recognizer_get_metadata($self);
     }
 }
 
