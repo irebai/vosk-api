@@ -51,6 +51,7 @@ class KaldiRecognizer {
         const char* FinalResult();
         const char* PartialResult();
         const char* GetMetadata();
+        const char* Decode(const char *data, int len);
 
 
     private:
@@ -62,7 +63,6 @@ class KaldiRecognizer {
         bool GetSpkVector(Vector<BaseFloat> &xvector);
         const char *GetResult();
         const char *StoreReturn(const string &res);
-        void Decode();
         void ComputeTimestamp(kaldi::CompactLattice clat);
         void getFeatureFrames();
 

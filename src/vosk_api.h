@@ -133,6 +133,9 @@ int vosk_recognizer_accept_waveform_s(VoskRecognizer *recognizer, const short *d
 int vosk_recognizer_accept_waveform_f(VoskRecognizer *recognizer, const float *data, int length);
 
 
+const char *vosk_recognizer_decode(VoskRecognizer *recognizer, const char *data, int length);
+
+
 /** Returns speech recognition result
  *
  * @returns the result in JSON format which contains decoded line, decoded

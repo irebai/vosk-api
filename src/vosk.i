@@ -130,6 +130,9 @@ typedef struct {} KaldiRecognizer;
 #endif
 
 
+    const char* Decode(const char *data, int len) {
+        return vosk_recognizer_decode($self, data, len);
+    }
     const char* Result() {
         return vosk_recognizer_result($self);
     }

@@ -142,10 +142,17 @@ KaldiRecognizer::~KaldiRecognizer() {
          spk_model_->Unref();
 }
 
-
-void KaldiRecognizer::Decode()
+const char* KaldiRecognizer::Decode(const char *data, int len)
 {
-    
+    state_ = RECOGNIZER_RUNNING;
+    Vector<BaseFloat> wave;
+    wave.Resize(len / 2, kUndefined);
+    for (int i = 0; i < len / 2; i++)
+        wave(i) = *(((short *)data) + i);
+
+    feature_pipeline_->AcceptWaveform(sample_frequency_, wave);
+    FinalResult();
+    return last_result_.c_str();
 }
 
 void KaldiRecognizer::getFeatureFrames()

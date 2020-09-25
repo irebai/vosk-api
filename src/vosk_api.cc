@@ -76,6 +76,11 @@ int vosk_recognizer_accept_waveform_f(VoskRecognizer *recognizer, const float *d
     return ((KaldiRecognizer *)(recognizer))->AcceptWaveform(data, length);
 }
 
+const char *vosk_recognizer_decode(VoskRecognizer *recognizer, const char *data, int length)
+{
+    return ((KaldiRecognizer *)recognizer)->Decode(data, length);
+}
+
 const char *vosk_recognizer_result(VoskRecognizer *recognizer)
 {
     return ((KaldiRecognizer *)recognizer)->Result();
