@@ -93,6 +93,9 @@ typedef struct {} KaldiRecognizer;
     KaldiRecognizer(Model *model, float sample_rate, bool is_metadata)  {
         return vosk_recognizer_new(model, sample_rate, is_metadata);
     }
+    KaldiRecognizer(Model *model, float sample_rate, bool offline, bool is_metadata)  {
+        return vosk_recognizer_new_offline(model, sample_rate, offline, is_metadata);
+    }
     KaldiRecognizer(Model *model, SpkModel *spk_model, float sample_rate)  {
         return vosk_recognizer_new_spk(model, spk_model, sample_rate);
     }

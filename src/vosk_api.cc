@@ -51,6 +51,11 @@ VoskRecognizer *vosk_recognizer_new(VoskModel *model, float sample_rate, bool is
     return (VoskRecognizer *)new KaldiRecognizer((Model *)model, sample_rate, is_metadata);
 }
 
+VoskRecognizer *vosk_recognizer_new_offline(VoskModel *model, float sample_rate, bool offline, bool is_metadata)
+{
+    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, sample_rate, offline, is_metadata);
+}
+
 VoskRecognizer *vosk_recognizer_new_spk(VoskModel *model, VoskSpkModel *spk_model, float sample_rate)
 {
     return (VoskRecognizer *)new KaldiRecognizer((Model *)model, (SpkModel *)spk_model, sample_rate);

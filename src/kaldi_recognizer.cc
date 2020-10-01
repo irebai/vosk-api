@@ -142,16 +142,89 @@ KaldiRecognizer::~KaldiRecognizer() {
          spk_model_->Unref();
 }
 
+
+KaldiRecognizer::KaldiRecognizer(Model *model, float sample_frequency, bool offline, bool is_metadata) : model_(model), spk_model_(0), sample_frequency_(sample_frequency), is_metadata_(is_metadata) {
+
+    model_->Ref();
+
+    if (offline){
+        model_->feature_info_.ivector_extractor_info.use_most_recent_ivector = true;
+        model_->feature_info_.ivector_extractor_info.greedy_ivector_extractor = true;
+    }
+
+    feature_pipeline_ = new kaldi::OnlineNnet2FeaturePipeline (model_->feature_info_);
+    silence_weighting_ = new kaldi::OnlineSilenceWeighting(*model_->trans_model_, model_->feature_info_.silence_weighting_config, 3);
+
+    g_fst_ = NULL;
+    decode_fst_ = NULL;
+
+    if (offline){
+        OnlineIvectorExtractorAdaptationState adaptation_state(model_->feature_info_.ivector_extractor_info);
+        feature_pipeline_->SetAdaptationState(adaptation_state);
+    }
+
+    if (!model_->hclg_fst_) {
+        if (model_->hcl_fst_ && model_->g_fst_) {
+            decode_fst_ = LookaheadComposeFst(*model_->hcl_fst_, *model_->g_fst_, model_->disambig_);
+        } else {
+            KALDI_ERR << "Can't create decoding graph";
+        }
+    }
+
+    decoder_ = new kaldi::SingleUtteranceNnet3Decoder(model_->nnet3_decoding_config_,
+            *model_->trans_model_,
+            *model_->decodable_info_,
+            model_->hclg_fst_ ? *model_->hclg_fst_ : *decode_fst_,
+            feature_pipeline_);
+
+    spk_feature_ = NULL;
+
+
+    InitState();
+    InitRescoring();
+}
+
+
+
 const char* KaldiRecognizer::Decode(const char *data, int len)
 {
+    // Cleanup if we finalized previous utterance or the whole feature pipeline
+    if (!(state_ == RECOGNIZER_RUNNING || state_ == RECOGNIZER_INITIALIZED)) {
+        CleanUp();
+    }
     state_ = RECOGNIZER_RUNNING;
+
     Vector<BaseFloat> wave;
     wave.Resize(len / 2, kUndefined);
     for (int i = 0; i < len / 2; i++)
         wave(i) = *(((short *)data) + i);
 
     feature_pipeline_->AcceptWaveform(sample_frequency_, wave);
-    FinalResult();
+    feature_pipeline_->InputFinished();
+
+    UpdateSilenceWeights();
+    
+    decoder_->AdvanceDecoding();
+    decoder_->FinalizeDecoding();
+    state_ = RECOGNIZER_FINALIZED;
+    GetResult();
+
+    if (is_metadata_){
+        getFeatureFrames();
+    }
+
+    // Free some memory while we are finalized, next
+    // iteration will reinitialize them anyway
+    delete decoder_;
+    delete feature_pipeline_;
+    delete silence_weighting_;
+    delete spk_feature_;
+
+    feature_pipeline_ = NULL;
+    silence_weighting_ = NULL;
+    decoder_ = NULL;
+    spk_feature_ = NULL;
+
     return last_result_.c_str();
 }
 

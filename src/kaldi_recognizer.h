@@ -41,6 +41,7 @@ enum KaldiRecognizerState {
 class KaldiRecognizer {
     public:
         KaldiRecognizer(Model *model, float sample_frequency, bool is_metadata);
+        KaldiRecognizer(Model *model, float sample_frequency, bool offline, bool is_metadata);
         KaldiRecognizer(Model *model, SpkModel *spk_model, float sample_frequency);
         KaldiRecognizer(Model *model, float sample_frequency, char const *grammar);
         ~KaldiRecognizer();

@@ -85,6 +85,9 @@ void vosk_spk_model_free(VoskSpkModel *model);
 VoskRecognizer *vosk_recognizer_new(VoskModel *model, float sample_rate, bool is_metadata);
 
 
+VoskRecognizer *vosk_recognizer_new_offline(VoskModel *model, float sample_rate, bool offline, bool is_metadata);
+
+
 /** Creates the recognizer object with speaker recognition
  *
  *  With the speaker recognition mode the recognizer not just recognize
