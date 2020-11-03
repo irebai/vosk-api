@@ -398,7 +398,6 @@ void KaldiRecognizer::ComputeTimestamp(kaldi::CompactLattice clat)
             mbr.GetOneBestTimes();
 
         int size = words.size();
-        KALDI_LOG << size;
 
         stringstream text;
 
@@ -481,7 +480,6 @@ const char* KaldiRecognizer::GetResult()
     fst::GetLinearSymbolSequence(best_path_lat, &alignment, &words, &weight);
 
     int size = words.size();
-    KALDI_LOG << size;
 
     stringstream text;
 
@@ -550,7 +548,6 @@ const char* KaldiRecognizer::FinalResult()
     return last_result_.c_str();
 }
 
-
 const char* KaldiRecognizer::GetMetadata()
 {
     if (metadata_.IsNull()) {
@@ -559,7 +556,6 @@ const char* KaldiRecognizer::GetMetadata()
     StoreReturn(metadata_.dump());
     return last_result_.c_str();
 }
-
 
 // Store result in recognizer and return as const string
 const char *KaldiRecognizer::StoreReturn(const string &res)
