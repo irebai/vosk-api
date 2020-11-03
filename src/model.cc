@@ -16,6 +16,14 @@
 //
 // For details of possible model layout see doc/models.md section model-structure
 
+
+// Modifications are apported by Ilyes Rebai, research engineer at Linagora.
+// The main goal is to adapt the model files' loading w.r.t. Linagora Models' configuration
+// and to adapt the code to the original KALDI decoder one "online2-wav-nnet3-latgen-faster".
+// Use extrat variables to make the decoder parameters more flexible.
+// Contact: irebai@linagora.com
+
+
 #include "model.h"
 
 #include <sys/stat.h>
@@ -144,38 +152,10 @@ void Model::ReadDataFiles()
 {
     struct stat buffer;
 
-    KALDI_LOG << "Decoding params beam=" << nnet3_decoding_config_.beam <<
-         " max-active=" << nnet3_decoding_config_.max_active <<
-         " lattice-beam=" << nnet3_decoding_config_.lattice_beam;
-    KALDI_LOG << "Silence phones " << endpoint_config_.silence_phones;
+    //load feature extraction config and ivector extractiong config
+    feature_info_ = new kaldi::OnlineNnet2FeaturePipelineInfo (feature_config_);
 
-    KALDI_LOG << "feature type " << feature_config_.feature_type;
-    if (feature_config_.feature_type == "mfcc") {
-      ReadConfigFromFile(feature_config_.mfcc_config, &feature_info_.mfcc_opts);
-      feature_info_.mfcc_opts.frame_opts.allow_downsample = true; // It is safe to downsample
-    } else if (feature_config_.feature_type == "plp") {
-      ReadConfigFromFile(feature_config_.plp_config, &feature_info_.plp_opts);
-      feature_info_.plp_opts.frame_opts.allow_downsample = true; // It is safe to downsample
-    } else if (feature_config_.feature_type == "fbank") {
-      ReadConfigFromFile(feature_config_.fbank_config, &feature_info_.fbank_opts);
-      feature_info_.fbank_opts.frame_opts.allow_downsample = true; // It is safe to downsample
-    } else {
-      KALDI_ERR << "Code error: invalid feature type " << feature_config_.feature_type;
-    }
-
-    if (feature_config_.ivector_extraction_config != "") {
-      feature_info_.use_ivectors = true;
-      OnlineIvectorExtractionConfig ivector_extraction_opts;
-      ReadConfigFromFile(feature_config_.ivector_extraction_config,
-                        &ivector_extraction_opts);
-      feature_info_.ivector_extractor_info.Init(ivector_extraction_opts);
-    } else {
-      feature_info_.use_ivectors = false;
-    }
-
-    feature_info_.silence_weighting_config.silence_weight = 1e-3;
-    feature_info_.silence_weighting_config.silence_phones_str = endpoint_config_.silence_phones;
-
+    //load acoustic model and decode config
     KALDI_LOG << "Am model file "<< nnet3_rxfilename_;
     trans_model_ = new kaldi::TransitionModel();
     nnet_ = new kaldi::nnet3::AmNnetSimple();
@@ -191,7 +171,7 @@ void Model::ReadDataFiles()
     decodable_info_ = new nnet3::DecodableNnetSimpleLoopedInfo(decodable_opts_,
                                                                nnet_);
 
-
+    //load decode graph
     if (stat(hclg_fst_rxfilename_.c_str(), &buffer) == 0) {
         KALDI_LOG << "Loading HCLG from " << hclg_fst_rxfilename_;
         hclg_fst_ = fst::ReadFstKaldiGeneric(hclg_fst_rxfilename_);
@@ -205,6 +185,7 @@ void Model::ReadDataFiles()
         ReadIntegerVectorSimple(disambig_rxfilename_, &disambig_);
     }
 
+    //load word symbol
     word_syms_ = NULL;
     if (hclg_fst_ && hclg_fst_->OutputSymbols()) {
         word_syms_ = hclg_fst_->OutputSymbols();
@@ -219,6 +200,7 @@ void Model::ReadDataFiles()
     }
     KALDI_ASSERT(word_syms_);
 
+    //load word boundary used to compute word timestamps
     if (stat(winfo_rxfilename_.c_str(), &buffer) == 0) {
         KALDI_LOG << "Loading winfo " << winfo_rxfilename_;
         kaldi::WordBoundaryInfoNewOpts opts;
@@ -227,6 +209,7 @@ void Model::ReadDataFiles()
         winfo_ = NULL;
     }
 
+    //load rescoring graphs
     if (stat(carpa_rxfilename_.c_str(), &buffer) == 0) {
         KALDI_LOG << "Loading CARPA model from " << carpa_rxfilename_;
         std_lm_fst_ = fst::ReadFstKaldi(std_fst_rxfilename_);
@@ -240,7 +223,67 @@ void Model::ReadDataFiles()
         std_lm_fst_ = NULL;
     }
 
-    sample_frequence_ = feature_info_.mfcc_opts.frame_opts.samp_freq;
+    //load cmvn matrix used during ivector extraction
+    if (feature_config_.global_cmvn_stats_rxfilename != "")
+    {
+        KALDI_LOG << "Loading global CMVN stats from " << feature_config_.global_cmvn_stats_rxfilename;
+        ReadKaldiObject(feature_config_.global_cmvn_stats_rxfilename,
+                      &global_cmvn_stats_);
+    }
+    cmvn_state_ = new kaldi::OnlineCmvnState (global_cmvn_stats_);
+
+    // activate wave upsample/downsample
+    if (feature_config_.feature_type == "mfcc") {
+      feature_info_->mfcc_opts.frame_opts.allow_downsample = true; // It is safe to downsample
+      feature_info_->mfcc_opts.frame_opts.allow_upsample = true; // It is safe to upsample
+    } else if (feature_config_.feature_type == "plp") {
+      feature_info_->plp_opts.frame_opts.allow_downsample = true; // It is safe to downsample
+      feature_info_->plp_opts.frame_opts.allow_upsample = true; // It is safe to upsample
+    } else if (feature_config_.feature_type == "fbank") {
+      feature_info_->fbank_opts.frame_opts.allow_downsample = true; // It is safe to downsample
+      feature_info_->fbank_opts.frame_opts.allow_upsample = true; // It is safe to upsample
+    } else {
+      KALDI_ERR << "Code error: invalid feature type " << feature_config_.feature_type;
+    }
+
+    //set silence phones for ivector update and create ivector adaptation state object
+    feature_info_->silence_weighting_config.silence_phones_str = endpoint_config_.silence_phones;
+    adaptation_state_ = new kaldi::OnlineIvectorExtractorAdaptationState(feature_info_->ivector_extractor_info);
+
+
+    //save the default sample frequence
+    sample_frequence_ = feature_info_->mfcc_opts.frame_opts.samp_freq;
+
+    //Check silence_weighting is activeted or not
+    string silweightstatus = (!feature_info_->silence_weighting_config.silence_phones_str.empty() &&
+      feature_info_->silence_weighting_config.silence_weight != 1.0) ? "activated (weight=" + to_string(feature_info_->silence_weighting_config.silence_weight) + ")" : "deactivated";
+    KALDI_LOG << "Ivector silence weighting is " << silweightstatus;
+
+}
+
+void Model::Debug()
+{
+    KALDI_LOG << "Decoding params beam=" << nnet3_decoding_config_.beam <<
+         " max-active=" << nnet3_decoding_config_.max_active <<
+         " lattice-beam=" << nnet3_decoding_config_.lattice_beam;
+    KALDI_LOG << "Silence phones " << endpoint_config_.silence_phones;
+    KALDI_LOG << "feature type " << feature_config_.feature_type;
+    KALDI_LOG << feature_info_->ivector_extractor_info.ivector_period;
+    KALDI_LOG << feature_info_->ivector_extractor_info.greedy_ivector_extractor;
+    KALDI_LOG << feature_info_->ivector_extractor_info.max_count;
+    KALDI_LOG << feature_info_->ivector_extractor_info.max_remembered_frames;
+    KALDI_LOG << feature_info_->ivector_extractor_info.min_post;
+    KALDI_LOG << feature_info_->ivector_extractor_info.num_cg_iters;
+    KALDI_LOG << feature_info_->ivector_extractor_info.num_gselect;
+    KALDI_LOG << feature_info_->ivector_extractor_info.posterior_scale;
+    KALDI_LOG << feature_info_->ivector_extractor_info.use_most_recent_ivector;
+    KALDI_LOG << feature_info_->ivector_extractor_info.lda_mat;
+    KALDI_LOG << feature_info_->ivector_extractor_info.splice_opts.left_context;
+    KALDI_LOG << feature_info_->ivector_extractor_info.splice_opts.right_context;
+    KALDI_LOG << feature_info_->silence_weighting_config.silence_weight;
+    KALDI_LOG << feature_info_->silence_weighting_config.silence_phones_str;
+    KALDI_LOG << decodable_opts_.extra_left_context_initial;
+    KALDI_LOG << decodable_opts_.frames_per_chunk;
 }
 
 int Model::getSampleFreq()

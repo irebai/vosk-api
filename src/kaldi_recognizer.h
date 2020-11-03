@@ -40,9 +40,8 @@ enum KaldiRecognizerState {
 
 class KaldiRecognizer {
     public:
-        KaldiRecognizer(Model *model, float sample_frequency, bool is_metadata);
-        KaldiRecognizer(Model *model, SpkModel *spk_model, float sample_frequency);
-        KaldiRecognizer(Model *model, float sample_frequency, char const *grammar);
+        KaldiRecognizer(Model *model, SpkModel *spk_model, float sample_frequency, bool online);
+        KaldiRecognizer(Model *model, float sample_frequency, char const *grammar, bool online);
         ~KaldiRecognizer();
         bool AcceptWaveform(const char *data, int len);
         bool AcceptWaveform(const short *sdata, int len);
@@ -51,8 +50,6 @@ class KaldiRecognizer {
         const char* FinalResult();
         const char* PartialResult();
         const char* GetMetadata();
-        const char* Decode(const char *data, int len);
-
 
     private:
         void InitState();
@@ -91,7 +88,7 @@ class KaldiRecognizer {
             - frame silence weights
             - detected segment position
         */
-        bool is_metadata_;
+        bool online_;
         json::JSON metadata_;
         json::JSON silence_pos;
 };

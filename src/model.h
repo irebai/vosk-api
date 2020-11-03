@@ -48,6 +48,7 @@ protected:
     ~Model();
     void Configure();
     void ReadDataFiles();
+    void Debug();
 
     friend class KaldiRecognizer;
 
@@ -68,16 +69,20 @@ protected:
 
     kaldi::OnlineEndpointConfig endpoint_config_;
     kaldi::LatticeFasterDecoderConfig nnet3_decoding_config_;
-    kaldi::nnet3::NnetSimpleLoopedComputationOptions decodable_opts_;
-    kaldi::OnlineNnet2FeaturePipelineInfo feature_info_;
     kaldi::OnlineNnet2FeaturePipelineConfig feature_config_;
-
+    kaldi::nnet3::NnetSimpleLoopedComputationOptions decodable_opts_;
+    
+    kaldi::OnlineNnet2FeaturePipelineInfo *feature_info_;
     kaldi::nnet3::DecodableNnetSimpleLoopedInfo *decodable_info_;
     kaldi::TransitionModel *trans_model_;
     kaldi::nnet3::AmNnetSimple *nnet_;
     const fst::SymbolTable *word_syms_;
     kaldi::WordBoundaryInfo *winfo_;
     vector<int32> disambig_;
+    Matrix<double> global_cmvn_stats_;
+    kaldi::OnlineCmvnState *cmvn_state_;
+    kaldi::OnlineIvectorExtractorAdaptationState *adaptation_state_;
+
 
     fst::Fst<fst::StdArc> *hclg_fst_;
     fst::Fst<fst::StdArc> *hcl_fst_;

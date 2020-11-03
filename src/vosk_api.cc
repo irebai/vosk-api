@@ -46,19 +46,14 @@ void vosk_spk_model_free(VoskSpkModel *model)
     ((SpkModel *)model)->Unref();
 }
 
-VoskRecognizer *vosk_recognizer_new(VoskModel *model, float sample_rate, bool is_metadata)
+VoskRecognizer *vosk_recognizer_new(VoskModel *model, VoskSpkModel *spk_model, float sample_rate, bool online)
 {
-    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, sample_rate, is_metadata);
+    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, (SpkModel *)spk_model, sample_rate, online);
 }
 
-VoskRecognizer *vosk_recognizer_new_spk(VoskModel *model, VoskSpkModel *spk_model, float sample_rate)
+VoskRecognizer *vosk_recognizer_new_grm(VoskModel *model, float sample_rate, const char *grammar, bool online)
 {
-    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, (SpkModel *)spk_model, sample_rate);
-}
-
-VoskRecognizer *vosk_recognizer_new_grm(VoskModel *model, float sample_rate, const char *grammar)
-{
-    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, sample_rate, grammar);
+    return (VoskRecognizer *)new KaldiRecognizer((Model *)model, sample_rate, grammar, online);
 }
 
 int vosk_recognizer_accept_waveform(VoskRecognizer *recognizer, const char *data, int length)
@@ -74,11 +69,6 @@ int vosk_recognizer_accept_waveform_s(VoskRecognizer *recognizer, const short *d
 int vosk_recognizer_accept_waveform_f(VoskRecognizer *recognizer, const float *data, int length)
 {
     return ((KaldiRecognizer *)(recognizer))->AcceptWaveform(data, length);
-}
-
-const char *vosk_recognizer_decode(VoskRecognizer *recognizer, const char *data, int length)
-{
-    return ((KaldiRecognizer *)recognizer)->Decode(data, length);
 }
 
 const char *vosk_recognizer_result(VoskRecognizer *recognizer)
