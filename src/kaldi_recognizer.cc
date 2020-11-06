@@ -404,10 +404,15 @@ void KaldiRecognizer::ComputeTimestamp(kaldi::CompactLattice clat)
         // Create JSON object
         for (int i = 0; i < size; i++) {
             json::JSON word;
-            word["word"] = model_->word_syms_->Find(words[i]);
+            string w = model_->word_syms_->Find(words[i]);
+            word["word"] = w;
             word["start"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].first) * 0.03;
             word["end"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].second) * 0.03;
             word["conf"] = conf[i];
+
+            if (w.compare("<unk>") != 0)
+                uttConfidence += conf[i];
+            
             metadata_["words"].append(word);
 
             if (i) {
@@ -415,6 +420,8 @@ void KaldiRecognizer::ComputeTimestamp(kaldi::CompactLattice clat)
             }
             text << model_->word_syms_->Find(words[i]);
         }
+        uttConfidence /= size;
+        
         if (metadata_["text"].ToString() == ""){
             metadata_["text"] = text.str();
         } else {

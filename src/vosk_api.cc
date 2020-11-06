@@ -100,3 +100,8 @@ void vosk_set_log_level(int log_level)
 {
     SetVerboseLevel(log_level);
 }
+
+float vosk_recognizer_uttConfidence(VoskRecognizer *recognizer)
+{
+    return ((KaldiRecognizer *)recognizer)->uttConfidence;
+}

@@ -138,6 +138,10 @@ typedef struct {} KaldiRecognizer;
     const char* GetMetadata() {
         return vosk_recognizer_get_metadata($self);
     }
+
+    float uttConfidence() {
+        return vosk_recognizer_uttConfidence($self);
+    }
 }
 
 %rename(SetLogLevel) vosk_set_log_level;

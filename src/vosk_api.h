@@ -198,6 +198,9 @@ const char *vosk_recognizer_final_result(VoskRecognizer *recognizer);
 const char *vosk_recognizer_get_metadata(VoskRecognizer *recognizer);
 
 
+float vosk_recognizer_uttConfidence(VoskRecognizer *recognizer);
+
+
 /** Releases recognizer object
  *
  *  Underlying model is also unreferenced and if needed released */
@@ -212,6 +215,7 @@ void vosk_recognizer_free(VoskRecognizer *recognizer);
  *     greather than 0 - more verbose mode
  */
 void vosk_set_log_level(int log_level);
+
 
 #ifdef __cplusplus
 }

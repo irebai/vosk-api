@@ -50,6 +50,7 @@ class KaldiRecognizer {
         const char* FinalResult();
         const char* PartialResult();
         const char* GetMetadata();
+        float uttConfidence;
 
     private:
         void InitState();
